@@ -1,0 +1,122 @@
+#/bin/bash
+
+#This Lab will execute commands in a script from Lab1
+#System Administration Lab
+#Compatible with Debian 9
+#
+#
+#
+#alter the /etc/apt/sources.list file by commenting out the second deb cdrom line
+#
+#We will create a backup version of sources list and place it in the user ~/ folder
+#Using Sed I will substitute the line deb cdrom in the copied version then overwrite
+#the sources.list file in /etc/apt
+
+HEADER="=================================="
+
+if [[ $UID -gt 0 ]]; then
+  echo "You don't has the power man"
+	exit 1
+fi
+#NOTE: Doesnt work as a normal user with sudo privilege since file is owned by root
+
+head /etc/apt/sources.list
+cp /etc/apt/sources.list ~/sources.list
+sed 's/^deb cdrom/#&/' ~/sources.list > /etc/apt/sources.list
+rm -f ~/sources.list
+head /etc/apt/sources.list
+apt-get update
+
+#Exercise 1: Adding users to the sudoers file
+#An if statement so that if the entry is already in it, so it wont duplicate it
+#The location that you would enter the users entry in /etc/sudoers is line 21
+echo ${HEADER}
+echo "Exercise 1"
+if [[ $(grep "student ALL=PASSWD:ALL" /etc/sudoers | wc -l) -eq 0 ]]; then
+	echo "Student being added"
+	sed -i '21i student ALL=PASSWD:ALL' /etc/sudoers
+else
+	echo "Student already in /etc/sudoers"
+fi
+cat /etc/sudoers
+tail /var/log/auth.log
+
+#Exercise 2: Adding new users
+#Checks to see if there is a line that contains jane/ john doe if there isnt any entries
+#will add users
+echo ${HEADER}
+echo "Exercise 2"
+if [[ ! -d /home/janedoe ]]; then
+	useradd janedoe -p P@ssw0rd
+fi
+cat /etc/passwd
+if [[ ! -d /home/johndoe ]]; then
+	adduser johndoe 
+fi
+
+#Exercise 3: Advanced User Administration
+#Going to install gnome-system-tools
+echo ${HEADER}
+echo "Exercise 3"
+apt-get -y install gnome-system-tools
+
+#Part of exercise is in a screenshot since it uses gui
+
+#Exercise 4: Group Administration
+echo $HEADER
+echo "Exercise 4"
+groupadd accounting
+tail -3 /etc/group
+#Checks to see if user janedoe is in the /etc/passwd, if not then do nothing
+#if yes then add janedoe to accounting
+if [[ ! -d /home/janedoe ]]; then
+	:
+else
+	usermod -G accounting janedoe
+	tail -1 /etc/group
+fi
+
+#Exercise 5: Deleting Users and Groups
+#If the directory johndoe doesnt exist that means the username johndoe 
+#doesnt exist so if it doesnt exist then dont do anything, since in 
+echo $HEADER
+echo "Exercise 5"
+if [[ ! -d /home/johndoe ]]; then
+	:
+else
+	usermod -L johndoe
+	ls -la /home
+	cat /etc/shadow
+	userdel -r johndoe
+	ls -la /home
+fi
+if [[ $(grep "finance" /etc/group | wc -l) -eq 0 ]] && [[ $(grep "accounting" /etc/group | wc -l) -eq 1 ]]; then
+	groupmod -n finance accounting
+	tail -3 /etc/group
+	groupdel finance
+	tail -3 /etc/group
+fi
+#Exercise 6: Viewing and Setting Special Permissions
+#
+echo $HEADER
+echo "Exercise 6"
+touch ~/specialfile
+chmod 777 ~/specialfile
+ls -lIF ~/
+chmod 4777 ~/specialfile
+ls -lIF ~/
+chmod g+s ~/specialfile
+ls -lIF ~/
+mkdir ~/sharedfolder
+chmod 777 ~/sharedfolder
+ls -lIF ~/
+chmod o+t ~/sharedfolder
+ls -lIF ~/
+chmod 0777 ~/specialfile
+ls -lIF ~/
+
+#BONUS: Find Files
+echo $HEADER
+echo "Bonus"
+find / -perm -4000 -fprint ~/suid.txt 2> /dev/null 
+cat ~/suid.txt
