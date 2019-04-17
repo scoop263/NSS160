@@ -1,40 +1,50 @@
 #/bin/bash
 
-#This Lab will execute commands in a script from Lab1
-#System Administration Lab
-#Compatible with Debian 9
-#
-#
-#
-#alter the /etc/apt/sources.list file by commenting out the second deb cdrom line
-#
-#We will create a backup version of sources list and place it in the user ~/ folder
-#Using Sed I will substitute the line deb cdrom in the copied version then overwrite
-#the sources.list file in /etc/apt
+#Preparation
+#Exercise 1 Adding Users to the sudoers file
+#Exercise 2 Adding New Users
+#Exercise 3 Advanced User Administration
+#Exercise 4 Group Administration
+#Exercise 5 Deleting users and groups
+#Exercise 6 Viewing and Setting Special Permissions
 
-HEADER="=================================="
+#--------------------------------------------------------
+#Preparation
+#This will prepare the script to function correctly
+#
+#First we will check to see if the UID variable is set to 0
+#If it is equal to 0 then the script continues, if the UID variable
+#is anything greater than 0, as in not the root user, it exits
 
 if [[ $UID -gt 0 ]]; then
-  echo "You don't has the power man"
+	echo "You don't has the power man"
 	exit 1
 fi
-#NOTE: Doesnt work as a normal user with sudo privilege since file is owned by root
 
-head /etc/apt/sources.list
+#We copy the /etc/apt/sources.list file to the /root/
+#Next we use the command sed to output an altered version of the file that
+#will comment out the "deb cdrom" line, we will then redirect this output
+#back into the original file to be used later on. We then remove the file
+#as well as updating the repo, and installing the sudo command
+#
+#NOTE:
+#	Could possibly be simplified using additional methods like the insert option
+#	of sed but for best practice of not directly altering configuration files
+#	using an output of substitutions is for the better 
+
 cp /etc/apt/sources.list ~/sources.list
 sed 's/^deb cdrom/#&/' ~/sources.list > /etc/apt/sources.list
 rm -f ~/sources.list
-head /etc/apt/sources.list
 apt-get update
-apt-get -y install sudo
+apt -y install sudo
 
+#-------------------------------------------------
 #Exercise 1: Adding users to the sudoers file
-#An if statement so that if the entry is already in it, so it wont duplicate it
+#An if statement so that if the entry is already in it, it wont duplicate entry
 #The location that you would enter the users entry in /etc/sudoers is line 21
-echo ${HEADER}
-echo "Exercise 1"
+
 if [[ $(grep "student ALL=PASSWD:ALL" /etc/sudoers | wc -l) -eq 0 ]]; then
-	echo "Student being added"
+	echo "user student being added to /etc/sudoers"
 	sed -i '21i student ALL=PASSWD:ALL' /etc/sudoers
 else
 	echo "Student already in /etc/sudoers"
@@ -42,34 +52,45 @@ fi
 cat /etc/sudoers
 tail /var/log/auth.log
 
+#-------------------------------------------------
 #Exercise 2: Adding new users
-#Checks to see if there is a line that contains jane/ john doe if there isnt any entries
-#will add users
-echo ${HEADER}
-echo "Exercise 2"
+#Each user has a home directory if they exist so we say If the directory does not
+#exist then add user, then we use the cat command to show that the user was successfully
+#added.
+#
+#
 if [[ ! -d /home/janedoe ]]; then
 	useradd janedoe -p P@ssw0rd
 fi
 cat /etc/passwd
+
 if [[ ! -d /home/johndoe ]]; then
 	adduser johndoe 
 fi
 
+#------------------------------------------------
 #Exercise 3: Advanced User Administration
 #Going to install gnome-system-tools
-echo ${HEADER}
-echo "Exercise 3"
+
 apt-get -y install gnome-system-tools
 
 #Part of exercise is in a screenshot since it uses gui
 
+
+#--------------------------------------------------
 #Exercise 4: Group Administration
-echo $HEADER
-echo "Exercise 4"
+#We first add the group accounting, we do not need to check to see if accounting exists
+#if it did exists no group would be created. After it is created we look at the last three lines
+#of the /etc/group file, we look at these lines since it was created using no additional parameters
+#the identifiers will be the next available one, which is more than not the last few lines of the /etc/group file
+
 groupadd accounting
 tail -3 /etc/group
-#Checks to see if user janedoe is in the /etc/passwd, if not then do nothing
-#if yes then add janedoe to accounting
+
+
+#Because this exercise relies on the previous section we will check once more to see if the users home
+#directory exists, if it does exist then we will put the user in the group accounting, and then look
+#at the last line of /etc/group, which just happens to be where the accounting entry would be
 if [[ ! -d /home/janedoe ]]; then
 	:
 else
@@ -77,11 +98,15 @@ else
 	tail -1 /etc/group
 fi
 
+#-------------------------------------------------------------
 #Exercise 5: Deleting Users and Groups
-#If the directory johndoe doesnt exist that means the username johndoe 
-#doesnt exist so if it doesnt exist then dont do anything, since in 
-echo $HEADER
-echo "Exercise 5"
+#Again in order to not keep adding unessecary users, or get errors saying they exist, we check to see if a
+#home directory exists, if it exists then we will do these following commands, if it doesnt exist then we 
+#wont do the following commands.
+#If the user exists we will disable the account, we will then list the directory and see if the user's
+#directory exists. we will then delete the user and confirm the user is deleted by check to see if the
+#user's home directory is no longer there.
+
 if [[ ! -d /home/johndoe ]]; then
 	:
 else
@@ -91,16 +116,25 @@ else
 	userdel -r johndoe
 	ls -la /home
 fi
+
+#We will first check to see if the group "finance" is non-existent, as well as making sure that the group
+#accounting exists, if both statements are true then we will rename the group accounting to finance.
+#Then we will check by looking at the last entry of /etc/group, then delete it, and confirm the group was deleted
+#by checking the /etc/group file once more.
 if [[ $(grep "finance" /etc/group | wc -l) -eq 0 ]] && [[ $(grep "accounting" /etc/group | wc -l) -eq 1 ]]; then
 	groupmod -n finance accounting
 	tail -3 /etc/group
 	groupdel finance
 	tail -3 /etc/group
 fi
+
+#------------------------------------------------------------------
 #Exercise 6: Viewing and Setting Special Permissions
-#
-echo $HEADER
-echo "Exercise 6"
+#We create the file ~/specialfile, change the permissions, then check, change the permissions again to include
+#a special permission, we will then do the same, but instead of using the octet method we will use the symbolic
+#method
+
+
 touch ~/specialfile
 chmod 777 ~/specialfile
 ls -lIF ~/
@@ -115,6 +149,7 @@ chmod o+t ~/sharedfolder
 ls -lIF ~/
 chmod 0777 ~/specialfile
 ls -lIF ~/
+
 
 #BONUS: Find Files
 echo $HEADER
